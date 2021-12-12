@@ -1,1 +1,16 @@
-// TODO
+.container {
+  height: 105px;
+  max-width: 721px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+
+  img {
+    width: 238.62px;
+    height: 25.63px;
+  }
+
+  &.home {
+    padding-top: 39px;
+  }
+}
