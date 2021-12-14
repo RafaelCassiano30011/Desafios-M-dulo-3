@@ -23,6 +23,30 @@
     line-height: 17px;
     color: #bbbbbb;
     margin-bottom: 60px;
+
+    li {
+      display: flex;
+      align-items: center;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: normal;
+      font-size: 14px;
+      line-height: 17px;
+      color: #bbbbbb;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+      p {
+        margin-top: 3px;
+        margin-left: 8px;
+      }
+
+      & + li {
+        margin-left: 24px;
+      }
+    }
   }
   .postContent {
     h2 {
@@ -54,8 +78,9 @@
 .banner {
   display: flex;
   width: 100%;
-  height: auto;
-  max-width: 1440px;
+  height: 25rem;
+  width: 100%;
   margin: 0 auto;
   margin-bottom: 80px;
+  object-fit: cover;
 }

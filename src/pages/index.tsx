@@ -1,5 +1,6 @@
 import { GetStaticProps } from 'next';
 import Link from 'next/dist/client/link';
+import { FiCalendar, FiUser } from 'react-icons/fi';
 
 import Prismic from '@prismicio/client';
 
@@ -7,6 +8,12 @@ import { getPrismicClient } from '../services/prismic';
 
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
+import { useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+import Head from 'next/head';
+import Header from '../components/Header';
 
 interface Post {
   uid?: string;
@@ -27,26 +34,91 @@ interface HomeProps {
   postsPagination: PostPagination;
 }
 
-export default function Home(Props: HomeProps) {
-  const posts = Props.postsPagination.results;
+export default function Home({ postsPagination }) {
+  const formattedPost = postsPagination.results.map((post: Post) => {
+    return {
+      ...post,
+      first_publication_date: format(
+        new Date(post.first_publication_date),
+        'dd MMM yyyy',
+        {
+          locale: ptBR,
+        }
+      ),
+    };
+  });
+  const [posts, setPosts] = useState<Post[]>(formattedPost);
+  const [nextPage, setNextPage] = useState(postsPagination.next_page);
+  const [CurrentPage, setCurrentPage] = useState(1);
+
+  const handleNextPage = async () => {
+    if (CurrentPage !== 1 && nextPage === null) {
+      return;
+    }
+
+    const response = await fetch(`${nextPage}`);
+
+    const postsResults = await response.json();
+    console.log(postsResults);
+
+    const newPosts = postsResults.results.map(post => {
+      return {
+        uid: post.uid,
+
+        data: {
+          title: post.data.title,
+          subtitle: post.data.subtitle ? post.data.subtitle : '',
+          author: post.data.author,
+        },
+        first_publication_date: format(
+          new Date(post.first_publication_date),
+          'dd MMM yyyy',
+          {
+            locale: ptBR,
+          }
+        ),
+      };
+    });
+
+    setPosts([...posts, ...newPosts]);
+    setNextPage(postsResults.next_page);
+    setCurrentPage(postsResults.page);
+  };
 
   return (
     <>
-      <main>
-        <article className={styles.containerPost}>
+      <Head>
+        <title>Home | SpaceTraveling</title>
+      </Head>
+
+      <main className={styles.containerPost}>
+        <Header />
+        <div>
           {posts.map(post => (
             <Link key={post.uid} href={`/post/${post.uid}`}>
               <a href={post.uid}>
-                <h4 className={styles.postTitle}>{post.data.title}</h4>
+                <strong className={styles.postTitle}>{post.data.title}</strong>
                 <p>{post.data.subtitle}</p>
-                <div>
-                  <time>{post.first_publication_date}</time>
-                  <span>{post.data.author}</span>
-                </div>
+                <ul>
+                  <li>
+                    {<FiCalendar />}
+                    {post.first_publication_date}
+                  </li>
+
+                  <li>
+                    {<FiUser />}
+                    <p>{post.data.author}</p>
+                  </li>
+                </ul>
               </a>
             </Link>
           ))}
-        </article>
+        </div>
+        {nextPage && (
+          <button onClick={handleNextPage} type="button">
+            Carregar mais posts
+          </button>
+        )}
       </main>
     </>
   );
@@ -57,8 +129,8 @@ export const getStaticProps: GetStaticProps = async () => {
   const postsResponse = await prismic.query(
     [Prismic.predicates.at('document.type', 'post')],
     {
-      fetch: ['post.title', 'post.content', 'post.author', 'post.subtitle'],
-      pageSize: 100,
+      // fetch: ['post.title', 'post.content', 'post.author', 'post.subtitle'],
+      pageSize: 1,
     }
   );
 
@@ -71,13 +143,7 @@ export const getStaticProps: GetStaticProps = async () => {
         subtitle: item.data.subtitle ? item.data.subtitle : '',
         author: item.data.author,
       },
-      first_publication_date: new Date(
-        item.first_publication_date
-      ).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }),
+      first_publication_date: item.first_publication_date,
     };
   });
 
@@ -85,7 +151,7 @@ export const getStaticProps: GetStaticProps = async () => {
     props: {
       postsPagination: {
         results: data,
-        next_page: '1',
+        next_page: postsResponse.next_page,
       },
     },
   };

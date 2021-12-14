@@ -1,9 +1,18 @@
 import { GetStaticPaths, GetStaticProps } from 'next';
+import { RichText } from 'prismic-dom';
+import Header from '../../components/Header';
 
 import { getPrismicClient } from '../../services/prismic';
+import Prismic from '@prismicio/client';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
+import { FiCalendar, FiClock, FiUser } from 'react-icons/fi';
+import { useRouter } from 'next/router';
+import Head from 'next/head';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { match } from 'assert';
 
 interface Post {
   first_publication_date: string | null;
@@ -27,26 +36,72 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
+  const totalWords = post.data.content.reduce((total, contentItem) => {
+    total += contentItem.heading.split(' ').length;
+
+    const words = contentItem.body.map(item => item.text.split(' ').length);
+
+    words.map(word => (total += word));
+    return total;
+  }, 0);
+
+  const readTime = Math.ceil(totalWords / 200);
+  const router = useRouter();
+
+  if (router.isFallback) {
+    return <h1>Carregando...</h1>;
+  }
+
+  const formattedDate = format(
+    new Date(post.first_publication_date),
+    'dd MMM yyyy',
+    {
+      locale: ptBR,
+    }
+  );
+
   return (
     <>
+      <Head>
+        <title>{`${post.data.title} | SpaceTraveling`}</title>
+      </Head>
+
+      <Header />
+      <img className={styles.banner} src={post.data.banner.url} alt="" />
       <main>
-        <img className={styles.banner} src={post.data.banner.url} alt="" />
-        <article className={styles.container}>
+        <div className={styles.container}>
           <h1>{post.data.title}</h1>
-          <div className={styles.infoPost}>
-            <time>{post.first_publication_date}</time>
-            <span>{post.data.author}</span>
-            <time>4 Min</time>
-          </div>
-          {post.data.content.map(item => (
-            <div className={styles.postContent}>
-              <h2>{item.heading}</h2>
-              {item.body.map(item2 => (
+          <ul className={styles.infoPost}>
+            <li>
+              <FiCalendar />
+              <p>{formattedDate}</p>
+            </li>
+            <li>
+              <FiUser />
+              <p>{post.data.author}</p>
+            </li>
+            <li>
+              <FiClock />
+              <p>{`${readTime} min`}</p>
+            </li>
+          </ul>
+          {post.data.content.map((content, index) => (
+            <article
+              key={`${content.heading}-${index}`}
+              className={styles.postContent}
+            >
+              <h2>{content.heading}</h2>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: RichText.asHtml(content.body),
+                }}
+              />
+              {/* {content.body.map(item2 => (
                 <p>{item2.text}</p>
-              ))}
-            </div>
+              ))} */}
+            </article>
           ))}
-        </article>
+        </div>
       </main>
     </>
   );
@@ -54,9 +109,19 @@ export default function Post({ post }: PostProps) {
 
 export const getStaticPaths = async () => {
   const prismic = getPrismicClient();
-  // const posts = await prismic.query(TODO);
+  const posts = await prismic.query([
+    Prismic.Predicates.at('document.type', 'post'),
+  ]);
 
-  return { paths: [], fallback: 'blocking' };
+  const paths = posts.results.map(post => {
+    return {
+      params: {
+        slug: post.uid,
+      },
+    };
+  });
+
+  return { paths, fallback: true };
 };
 
 export const getStaticProps = async ({ params }) => {
@@ -72,15 +137,14 @@ export const getStaticProps = async ({ params }) => {
         url: response.data.banner.url,
       },
       author: response.data.author,
-      content: response.data.content,
+      content: response.data.content.map(content => {
+        return {
+          heading: content.heading,
+          body: [...content.body],
+        };
+      }),
     },
-    first_publication_date: new Date(
-      response.first_publication_date
-    ).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    }),
+    first_publication_date: response.first_publication_date,
   };
 
   return {
