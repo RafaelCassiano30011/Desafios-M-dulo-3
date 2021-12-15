@@ -1,1 +1,34 @@
 // TODO
+.container {
+  max-width: 721px;
+  margin: 0 auto;
+  color: white;
+ }
+
+.preview {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  margin-top: 5.5rem;
+  background: #f8f8f8;
+  border-radius: 4px;
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 22px;
+  text-align: justify;
+  color: #1a1d23;
+  height: 58px;
+  text-decoration: none;
+  cursor: pointer;
+  transition-duration: 300ms;
+
+  &:hover {
+    text-decoration: underline;
+    filter: brightness(0.8);
+  }
+}
